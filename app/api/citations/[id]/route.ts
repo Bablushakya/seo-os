@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic'
 
 import { NextRequest } from 'next/server'
 import { withErrorHandler, formatResponse, formatDeletedResponse } from '@/lib/api-handler'
-import { requireAuth, requireOwnerOrAdmin } from '@/lib/auth/rbac'
+import { requireAuth, requireRole } from '@/lib/auth/rbac'
 import { createClient } from '@/lib/supabase/server'
 import { CitationUpdateSchema } from '@/lib/utils/validation'
 import { logUpdate, logDelete } from '@/lib/audit'
@@ -88,7 +88,7 @@ export const DELETE = withErrorHandler(async (
   req: Request,
   context: { params: Record<string, string> }
 ) => {
-  const authContext = await requireAuth()
+  const { user } = await requireRole(['admin'])
   const supabase = await createClient()
   const { id } = context.params as { id: string }
 
@@ -103,8 +103,7 @@ export const DELETE = withErrorHandler(async (
     throw new AppError(ErrorCode.NOT_FOUND, 'Citation not found', 404)
   }
 
-  // 2. Verify admin or creator ownership
-  requireOwnerOrAdmin(authContext, oldCitation.created_by)
+  // 2. Verification check handled by requireRole(['admin']) above
 
   // 3. Delete
   const { error: deleteError } = await supabase
@@ -117,7 +116,7 @@ export const DELETE = withErrorHandler(async (
   }
 
   // 4. Log audit event
-  await logDelete(authContext.user.id, 'citations', id, oldCitation)
+  await logDelete(user.id, 'citations', id, oldCitation)
 
   return formatDeletedResponse()
 })
