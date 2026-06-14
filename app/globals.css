@@ -1,0 +1,259 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Google Fonts — Inter + JetBrains Mono
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ============================================================
+   Design Tokens — Dark Mode (Default)
+   From DOC4 Section 10
+   ============================================================ */
+:root {
+  /* Base colours — dark mode */
+  --background: 224 71% 4%;           /* Near-black */
+  --foreground: 213 31% 91%;          /* Light text */
+
+  --card: 224 71% 4%;
+  --card-foreground: 213 31% 91%;
+
+  --popover: 224 71% 4%;
+  --popover-foreground: 213 31% 91%;
+
+  --primary: 210 40% 98%;             /* Near-white — primary buttons */
+  --primary-foreground: 222 47% 11%;  /* Dark text on primary */
+
+  --secondary: 222 47% 11%;
+  --secondary-foreground: 210 40% 98%;
+
+  --muted: 223 47% 11%;
+  --muted-foreground: 215 20% 65%;
+
+  --accent: 216 34% 17%;
+  --accent-foreground: 210 40% 98%;
+
+  --destructive: 0 63% 31%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 216 34% 17%;
+  --input: 216 34% 17%;
+  --ring: 216 34% 17%;
+
+  /* ---- Status Colours ---- */
+  --status-live: #22c55e;
+  --status-submitted: #3b82f6;
+  --status-pending: #6b7280;
+  --status-rejected: #ef4444;
+  --status-needs-update: #f97316;
+  --status-pitching: #a855f7;
+  --status-accepted: #06b6d4;
+  --status-writing: #eab308;
+  --status-editing: #f97316;
+  --status-published: #22c55e;
+
+  /* ---- Priority Colours ---- */
+  --priority-high: #ef4444;
+  --priority-medium: #f97316;
+  --priority-low: #6b7280;
+
+  /* ---- Pipeline Stage Colours ---- */
+  --pipeline-identified: #6b7280;
+  --pipeline-contacted: #3b82f6;
+  --pipeline-followed-up: #a855f7;
+  --pipeline-negotiating: #f97316;
+  --pipeline-placed: #22c55e;
+  --pipeline-rejected: #ef4444;
+
+  /* ---- Layout Dimensions ---- */
+  --sidebar-width: 240px;
+  --sidebar-collapsed-width: 60px;
+  --header-height: 60px;
+  --page-padding: 24px;
+
+  /* ---- Typography ---- */
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* ---- Border Radius ---- */
+  --radius: 0.375rem;                  /* 6px — professional, subtle corners */
+}
+
+/* ============================================================
+   Light Mode Overrides
+   ============================================================ */
+.light {
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+
+  --primary: 222 47% 11%;
+  --primary-foreground: 210 40% 98%;
+
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+
+  --accent: 210 40% 96%;
+  --accent-foreground: 222 47% 11%;
+
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 210 40% 98%;
+
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 222 84% 5%;
+}
+
+/* ============================================================
+   Base Styles
+   ============================================================ */
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+
+  /* Scrollbar styling for dark mode */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-background;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground;
+  }
+
+  /* Focus ring */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+/* ============================================================
+   Utility Classes
+   ============================================================ */
+@layer utilities {
+  /* Text truncation */
+  .truncate-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Shimmer animation for skeleton loading */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--accent)) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+
+  /* Sidebar transition */
+  .sidebar-transition {
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  /* Page fade-in */
+  .page-enter {
+    @apply animate-fade-in;
+  }
+
+  /* Status badge colours */
+  .badge-live {
+    background-color: color-mix(in srgb, var(--status-live) 15%, transparent);
+    color: var(--status-live);
+    border-color: color-mix(in srgb, var(--status-live) 30%, transparent);
+  }
+
+  .badge-submitted {
+    background-color: color-mix(in srgb, var(--status-submitted) 15%, transparent);
+    color: var(--status-submitted);
+    border-color: color-mix(in srgb, var(--status-submitted) 30%, transparent);
+  }
+
+  .badge-pending {
+    background-color: color-mix(in srgb, var(--status-pending) 15%, transparent);
+    color: var(--status-pending);
+    border-color: color-mix(in srgb, var(--status-pending) 30%, transparent);
+  }
+
+  .badge-rejected {
+    background-color: color-mix(in srgb, var(--status-rejected) 15%, transparent);
+    color: var(--status-rejected);
+    border-color: color-mix(in srgb, var(--status-rejected) 30%, transparent);
+  }
+
+  .badge-needs-update {
+    background-color: color-mix(in srgb, var(--status-needs-update) 15%, transparent);
+    color: var(--status-needs-update);
+    border-color: color-mix(in srgb, var(--status-needs-update) 30%, transparent);
+  }
+
+  /* Priority badge colours */
+  .badge-high {
+    background-color: color-mix(in srgb, var(--priority-high) 15%, transparent);
+    color: var(--priority-high);
+    border-color: color-mix(in srgb, var(--priority-high) 30%, transparent);
+  }
+
+  .badge-medium {
+    background-color: color-mix(in srgb, var(--priority-medium) 15%, transparent);
+    color: var(--priority-medium);
+    border-color: color-mix(in srgb, var(--priority-medium) 30%, transparent);
+  }
+
+  .badge-low {
+    background-color: color-mix(in srgb, var(--priority-low) 15%, transparent);
+    color: var(--priority-low);
+    border-color: color-mix(in srgb, var(--priority-low) 30%, transparent);
+  }
+}
+
+/* ============================================================
+   Skip Link (Accessibility)
+   ============================================================ */
+.skip-link {
+  @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50;
+  @apply bg-primary text-primary-foreground px-4 py-2 rounded-md font-medium;
+}
+
+/* ============================================================
+   Reduced Motion Support
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
