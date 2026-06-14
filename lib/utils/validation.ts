@@ -231,6 +231,7 @@ export const PRContactCreateSchema = z.object({
   beat: OptionalText,
   notes: NotesSchema,
   last_contact_date: DateSchema,
+  response_rate: z.number({ coerce: true }).int().min(0).max(100).default(0),
 })
 
 export type PRCampaignCreateInput = z.infer<typeof PRCampaignCreateSchema>
