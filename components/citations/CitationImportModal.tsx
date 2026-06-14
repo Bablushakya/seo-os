@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner'
 import { Upload, X, FileText, CheckCircle2, AlertTriangle, Download } from 'lucide-react'
 import Papa from 'papaparse'
+import * as XLSX from 'xlsx'
 
 // Make sure we import Dialog components from components/ui/dialog
 import {
@@ -89,9 +90,33 @@ export function CitationImportModal({
     }
   }
 
+  const autoMapHeaders = (headers: string[]) => {
+    const initialMapping = { ...mapping }
+    
+    const findMatch = (options: string[], fields: string[]) => {
+      return fields.find(f => 
+        options.some(opt => f.toLowerCase().replace(/[^a-z0-9]/g, '').includes(opt))
+      ) || ''
+    }
+
+    initialMapping.directory_name = findMatch(['directory', 'name', 'dirname', 'business'], headers)
+    initialMapping.url = findMatch(['url', 'link', 'website', 'address'], headers)
+    initialMapping.domain_authority = findMatch(['da', 'domainauthority', 'authority', 'score'], headers)
+    initialMapping.niche = findMatch(['niche', 'category', 'industry'], headers)
+    initialMapping.status = findMatch(['status', 'state'], headers)
+    initialMapping.date_submitted = findMatch(['submitted', 'datesubmitted', 'submission'], headers)
+    initialMapping.date_live = findMatch(['live', 'datelive', 'pub'], headers)
+    initialMapping.notes = findMatch(['notes', 'desc', 'details', 'comment'], headers)
+
+    setMapping(initialMapping)
+  }
+
   const processFile = (selectedFile: File) => {
-    if (selectedFile.type !== 'text/csv' && !selectedFile.name.endsWith('.csv')) {
-      setParseError('Please upload a valid CSV file.')
+    const isCSV = selectedFile.type === 'text/csv' || selectedFile.name.endsWith('.csv')
+    const isXLSX = selectedFile.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || selectedFile.name.endsWith('.xlsx')
+
+    if (!isCSV && !isXLSX) {
+      setParseError('Please upload a valid CSV or Excel (.xlsx) file.')
       return
     }
 
@@ -105,51 +130,98 @@ export function CitationImportModal({
     setIsParsing(true)
     setImportResult(null)
 
-    Papa.parse(selectedFile, {
-      header: true,
-      skipEmptyLines: 'greedy',
-      complete: (results) => {
-        setIsParsing(false)
-        if (results.errors.length > 0) {
-          console.warn('Papa parse errors:', results.errors)
-        }
+    if (isCSV) {
+      Papa.parse(selectedFile, {
+        header: true,
+        skipEmptyLines: 'greedy',
+        complete: (results) => {
+          setIsParsing(false)
+          if (results.errors.length > 0) {
+            console.warn('Papa parse errors:', results.errors)
+          }
 
-        const headers = results.meta.fields || []
-        if (headers.length === 0) {
-          setParseError('The CSV file is empty or has no header row.')
+          const headers = results.meta.fields || []
+          if (headers.length === 0) {
+            setParseError('The CSV file is empty or has no header row.')
+            setFile(null)
+            return
+          }
+
+          setCsvHeaders(headers)
+          setCsvRows(results.data)
+          autoMapHeaders(headers)
+        },
+        error: (err) => {
+          setIsParsing(false)
+          setParseError(`Failed to parse CSV: ${err.message}`)
           setFile(null)
-          return
         }
+      })
+    } else if (isXLSX) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer)
+          const workbook = XLSX.read(data, { type: 'array' })
+          
+          const firstSheetName = workbook.SheetNames[0]
+          if (!firstSheetName) {
+            throw new Error('The Excel file is empty.')
+          }
+          const worksheet = workbook.Sheets[firstSheetName]
+          if (!worksheet) {
+            throw new Error('Worksheet not found.')
+          }
+          
+          const jsonData = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 })
+          setIsParsing(false)
+          
+          if (jsonData.length === 0) {
+            setParseError('The Excel file is empty.')
+            setFile(null)
+            return
+          }
+          
+          const headers = (jsonData[0] as string[]) || []
+          if (headers.length === 0) {
+            setParseError('The Excel file has no header row.')
+            setFile(null)
+            return
+          }
 
-        setCsvHeaders(headers)
-        setCsvRows(results.data)
-
-        // Auto-map columns if common headers match
-        const initialMapping = { ...mapping }
-        
-        const findMatch = (options: string[], fields: string[]) => {
-          return fields.find(f => 
-            options.some(opt => f.toLowerCase().replace(/[^a-z0-9]/g, '').includes(opt))
-          ) || ''
+          // Convert remaining rows into objects mapping headers to cell values
+          const rows: any[] = []
+          for (let i = 1; i < jsonData.length; i++) {
+            const rowValues = jsonData[i] as any[]
+            if (!rowValues || rowValues.every(val => val === null || val === '')) {
+              continue
+            }
+            
+            const rowObj: any = {}
+            headers.forEach((header, index) => {
+              if (header) {
+                rowObj[header] = rowValues[index] !== undefined ? rowValues[index] : ''
+              }
+            })
+            rows.push(rowObj)
+          }
+          
+          setCsvHeaders(headers)
+          setCsvRows(rows)
+          autoMapHeaders(headers)
+        } catch (err: any) {
+          setIsParsing(false)
+          setParseError(`Failed to parse Excel file: ${err.message}`)
+          setFile(null)
         }
-
-        initialMapping.directory_name = findMatch(['directory', 'name', 'dirname', 'business'], headers)
-        initialMapping.url = findMatch(['url', 'link', 'website', 'address'], headers)
-        initialMapping.domain_authority = findMatch(['da', 'domainauthority', 'authority', 'score'], headers)
-        initialMapping.niche = findMatch(['niche', 'category', 'industry'], headers)
-        initialMapping.status = findMatch(['status', 'state'], headers)
-        initialMapping.date_submitted = findMatch(['submitted', 'datesubmitted', 'submission'], headers)
-        initialMapping.date_live = findMatch(['live', 'datelive', 'pub'], headers)
-        initialMapping.notes = findMatch(['notes', 'desc', 'details', 'comment'], headers)
-
-        setMapping(initialMapping)
-      },
-      error: (err) => {
+      }
+      reader.onerror = () => {
         setIsParsing(false)
-        setParseError(`Failed to parse CSV: ${err.message}`)
+        setParseError('Failed to read file.')
         setFile(null)
       }
-    })
+      reader.readAsArrayBuffer(selectedFile)
+    }
   }
 
   const handleMapChange = (field: keyof ColumnMapping, val: string) => {
@@ -166,6 +238,72 @@ export function CitationImportModal({
     setParseError(null)
 
     try {
+      const normalizeStatus = (status: any): string => {
+        const s = String(status || '').toLowerCase().trim()
+        if (s.includes('live') || s.includes('present') || s.includes('active') || s.includes('yes') || s === 'y') {
+          return 'live'
+        }
+        if (s.includes('submitted') || s.includes('sent') || s.includes('progress')) {
+          return 'submitted'
+        }
+        if (s.includes('reject') || s.includes('fail') || s.includes('block')) {
+          return 'rejected'
+        }
+        if (s.includes('need') || s.includes('update') || s.includes('fix') || s.includes('incorrect')) {
+          return 'needs_update'
+        }
+        return 'pending'
+      }
+
+      const normalizeDate = (val: any): string | null => {
+        if (val === null || val === undefined || val === '') return null
+        
+        // If it's already a JS Date object
+        if (val instanceof Date) {
+          if (!isNaN(val.getTime())) {
+            const yyyy = val.getFullYear()
+            const mm = String(val.getMonth() + 1).padStart(2, '0')
+            const dd = String(val.getDate()).padStart(2, '0')
+            return `${yyyy}-${mm}-${dd}`
+          }
+        }
+        
+        // If it's a number (Excel serial date number)
+        if (typeof val === 'number') {
+          try {
+            const date = new Date((val - 25569) * 86400 * 1000)
+            if (!isNaN(date.getTime())) {
+              const yyyy = date.getFullYear()
+              const mm = String(date.getMonth() + 1).padStart(2, '0')
+              const dd = String(date.getDate()).padStart(2, '0')
+              return `${yyyy}-${mm}-${dd}`
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+        
+        const s = String(val).trim()
+        if (!s) return null
+        
+        // Check if already YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+        
+        // Try parsing string to Date
+        try {
+          const parsed = new Date(s)
+          if (!isNaN(parsed.getTime())) {
+            const yyyy = parsed.getFullYear()
+            const mm = String(parsed.getMonth() + 1).padStart(2, '0')
+            const dd = String(parsed.getDate()).padStart(2, '0')
+            return `${yyyy}-${mm}-${dd}`
+          }
+        } catch (e) {
+          // ignore
+        }
+        return null
+      }
+
       // Map the CSV rows to our API payload format
       const payload = csvRows.map(row => {
         return {
@@ -173,9 +311,9 @@ export function CitationImportModal({
           url: row[mapping.url] || '',
           domain_authority: mapping.domain_authority ? Number(row[mapping.domain_authority]) || 0 : 0,
           niche: mapping.niche ? row[mapping.niche] || '' : '',
-          status: mapping.status ? (row[mapping.status] || 'pending').toLowerCase().trim() : 'pending',
-          date_submitted: mapping.date_submitted ? row[mapping.date_submitted] || null : null,
-          date_live: mapping.date_live ? row[mapping.date_live] || null : null,
+          status: mapping.status ? normalizeStatus(row[mapping.status]) : 'pending',
+          date_submitted: mapping.date_submitted ? normalizeDate(row[mapping.date_submitted]) : null,
+          date_live: mapping.date_live ? normalizeDate(row[mapping.date_live]) : null,
           notes: mapping.notes ? row[mapping.notes] || '' : '',
         }
       })
@@ -275,16 +413,16 @@ export function CitationImportModal({
           >
             <Upload className="h-10 w-10 text-muted-foreground mb-4" />
             <p className="text-sm text-muted-foreground font-medium mb-1">
-              Drag & drop CSV file here, or click to browse
+              Drag & drop CSV or Excel (.xlsx) file here, or click to browse
             </p>
             <p className="text-xs text-muted-foreground/60">
-              Accepted: .csv, max 5MB (Limit: 500 rows per batch)
+              Accepted: .csv, .xlsx, max 5MB (Limit: 500 rows per batch)
             </p>
             <input
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
-              accept=".csv"
+              accept=".csv,.xlsx"
               className="hidden"
             />
           </div>
@@ -399,6 +537,42 @@ export function CitationImportModal({
                         </SelectTrigger>
                         <SelectContent className="bg-popover border-border">
                           <SelectItem value="none">-- Don't Map (Default Pending) --</SelectItem>
+                          {csvHeaders.map(h => (
+                            <SelectItem key={h} value={h}>{h}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Date Submitted</Label>
+                      <Select
+                        value={mapping.date_submitted || 'none'}
+                        onValueChange={(val) => handleMapChange('date_submitted', val)}
+                      >
+                        <SelectTrigger className="bg-background border-input">
+                          <SelectValue placeholder="Map header" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover border-border">
+                          <SelectItem value="none">-- Don't Map --</SelectItem>
+                          {csvHeaders.map(h => (
+                            <SelectItem key={h} value={h}>{h}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Date Live</Label>
+                      <Select
+                        value={mapping.date_live || 'none'}
+                        onValueChange={(val) => handleMapChange('date_live', val)}
+                      >
+                        <SelectTrigger className="bg-background border-input">
+                          <SelectValue placeholder="Map header" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover border-border">
+                          <SelectItem value="none">-- Don't Map --</SelectItem>
                           {csvHeaders.map(h => (
                             <SelectItem key={h} value={h}>{h}</SelectItem>
                           ))}
