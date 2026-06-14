@@ -13,6 +13,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { LoadingSpinner, TableBodySkeleton } from '@/components/shared/LoadingSpinner'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { GuestPostForm } from '@/components/guest-posts/GuestPostForm'
+import { AITopicGenerator } from '@/components/guest-posts/AITopicGenerator'
 import {
   Plus,
   Search,
@@ -30,6 +31,7 @@ import {
   Key,
   Link2,
   Globe,
+  Sparkles,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { GUEST_POST_STATUSES, GUEST_POST_STATUS_LABELS, GUEST_POST_STATUS_COLORS } from '@/lib/constants'
@@ -61,6 +63,7 @@ function GuestPostsContent() {
 
   // Modals / Form State
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isAITopicModalOpen, setIsAITopicModalOpen] = useState(false)
   const [selectedPost, setSelectedPost] = useState<GuestPost | null>(null)
 
   // Load view mode preference
@@ -279,6 +282,13 @@ function GuestPostsContent() {
               <List className="h-4 w-4" />
             </Button>
           </div>
+          <Button
+            onClick={() => setIsAITopicModalOpen(true)}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium flex items-center gap-1.5"
+          >
+            <Sparkles className="h-4 w-4" />
+            AI Topic Ideas
+          </Button>
           <Button
             onClick={handleAddClick}
             className="bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-medium"
@@ -670,6 +680,19 @@ function GuestPostsContent() {
           mutateList()
           mutateStats()
           mutate('/api/dashboard/stats')
+        }}
+      />
+
+      {/* AI Topic Generator Modal */}
+      <AITopicGenerator
+        isOpen={isAITopicModalOpen}
+        onClose={() => setIsAITopicModalOpen(false)}
+        onSuccess={(createdPost) => {
+          setIsAITopicModalOpen(false)
+          setSelectedPost(createdPost)
+          setIsFormOpen(true)
+          mutateList()
+          mutateStats()
         }}
       />
     </div>

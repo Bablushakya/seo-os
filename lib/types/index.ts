@@ -402,6 +402,8 @@ export interface Report {
   status: ReportStatus
   generated_by: string | null
   generated_at: string
+  // Joined fields
+  creator?: Pick<User, 'id' | 'full_name' | 'avatar_url'>
 }
 
 /**
@@ -437,6 +439,14 @@ export interface ReportData {
     by_assignee: Record<string, number>
   }
   kpi_progress: Record<string, { target: number; actual: number; percentage: number }>
+  gbp?: {
+    views: number
+    clicks: number
+    calls: number
+    direction_requests: number
+    photo_views: number
+  }
+  comparison?: Record<string, { current: number; previous: number; change_percent: number }>
 }
 
 /**

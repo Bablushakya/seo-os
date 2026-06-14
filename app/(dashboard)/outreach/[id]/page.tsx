@@ -21,6 +21,7 @@ import {
 import { LoadingSpinner, TableBodySkeleton } from '@/components/shared/LoadingSpinner'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { ProspectForm } from '@/components/outreach/ProspectForm'
+import { AIEmailGenerator } from '@/components/outreach/AIEmailGenerator'
 import {
   Mail,
   Phone,
@@ -498,6 +499,8 @@ export default function ProspectDetailPage({ params }: { params: { id: string } 
               </div>
             </form>
           </div>
+
+          <AIEmailGenerator prospect={prospect} onSaveNote={mutateNotes} />
 
           {/* Timeline Feed */}
           <div className="space-y-4">
