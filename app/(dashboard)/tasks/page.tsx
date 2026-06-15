@@ -41,7 +41,7 @@ import {
 import { toast } from 'sonner'
 import type { Task, TaskPriority, TaskStatus } from '@/lib/types'
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json().then((json) => json.data))
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
 
 export default function TasksPage() {
   const { user } = useAuth()
@@ -198,10 +198,14 @@ export default function TasksPage() {
     const dueToday: Task[] = []
     const dueThisWeek: Task[] = []
     const dueLater: Task[] = []
+    const completed: Task[] = []
 
     tasks.forEach((t: Task) => {
-      // Ignore completed tasks in groups
-      if (t.status === 'done') return
+      // Completed tasks go to their own group; skip from date groups unless filtering by done
+      if (t.status === 'done') {
+        completed.push(t)
+        return
+      }
 
       if (t.due_date) {
         if (t.due_date < todayStr) {
@@ -218,11 +222,11 @@ export default function TasksPage() {
       }
     })
 
-    return { overdue, dueToday, dueThisWeek, dueLater }
+    return { overdue, dueToday, dueThisWeek, dueLater, completed }
   }
 
-  const { overdue, dueToday, dueThisWeek, dueLater } = getGroupedMyTasks()
-  const isMyTasksEmpty = overdue.length === 0 && dueToday.length === 0 && dueThisWeek.length === 0 && dueLater.length === 0
+  const { overdue, dueToday, dueThisWeek, dueLater, completed } = getGroupedMyTasks()
+  const isMyTasksEmpty = overdue.length === 0 && dueToday.length === 0 && dueThisWeek.length === 0 && dueLater.length === 0 && completed.length === 0
 
   const getPriorityBadgeColor = (p: TaskPriority) => {
     switch (p) {
@@ -446,6 +450,29 @@ export default function TasksPage() {
                   </div>
                   <div className="p-0 divide-y divide-border/40">
                     {dueLater.map((t) => (
+                      <TaskRowItem
+                        key={t.id}
+                        task={t}
+                        onToggle={handleToggleComplete}
+                        onClick={handleEditClick}
+                        onDelete={handleDeleteTask}
+                        priorityBadge={getPriorityBadgeColor(t.priority)}
+                        moduleBadge={getModuleIcon(t.module_type)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Group 5: Completed */}
+              {completed.length > 0 && (
+                <div className="border-border bg-card opacity-70">
+                  <div className="flex items-center gap-2 p-3 bg-muted/30 border-b border-border text-green-500 font-semibold text-xs tracking-wider uppercase">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Completed ({completed.length})
+                  </div>
+                  <div className="p-0 divide-y divide-border/40">
+                    {completed.map((t) => (
                       <TaskRowItem
                         key={t.id}
                         task={t}
