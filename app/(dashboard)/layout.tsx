@@ -25,6 +25,8 @@ import {
   Menu,
   X,
   ChevronRight,
+  Info,
+  StickyNote,
 } from 'lucide-react'
 import { USER_ROLE_LABELS } from '@/lib/constants'
 
@@ -43,6 +45,8 @@ const ICON_MAP = {
   CheckSquare,
   BarChart,
   Settings,
+  Info,
+  StickyNote,
 } as const
 
 type IconName = keyof typeof ICON_MAP
@@ -82,6 +86,13 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: 'Tasks', href: '/tasks', icon: 'CheckSquare' },
       { label: 'Reports', href: '/reports', icon: 'BarChart' },
+    ],
+  },
+  {
+    group: 'TEAM',
+    items: [
+      { label: 'Information', href: '/information', icon: 'Info' },
+      { label: 'Notes Board', href: '/notes', icon: 'StickyNote' },
     ],
   },
   {

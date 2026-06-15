@@ -1,6 +1,5 @@
 export const dynamic = 'force-dynamic'
 
-import { NextRequest } from 'next/server'
 import { withErrorHandler, formatResponse, formatDeletedResponse } from '@/lib/api-handler'
 import { requireAuth, requireRole } from '@/lib/auth/rbac'
 import { createClient } from '@/lib/supabase/server'
@@ -10,22 +9,23 @@ import { AppError, ErrorCode } from '@/lib/errors'
 
 /**
  * PATCH /api/gbp/reviews/[id]
- * 
+ *
  * Submits or updates a response to a customer review.
  * Automatically tracks is_responded = true, responded_by, and response_date.
- * 
+ *
  * DELETE /api/gbp/reviews/[id]
- * 
+ *
  * Deletes a review log. Restricted to Admin.
  */
 
 export const PATCH = withErrorHandler(async (
   req: Request,
-  context: { params: Record<string, string> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const { user } = await requireAuth()
   const supabase = await createClient()
-  const { id } = context.params as { id: string }
+  const params = await context.params
+  const { id } = params as { id: string }
 
   // 1. Fetch old record for audit logging
   const { data: oldReview, error: fetchError } = await supabase
@@ -43,9 +43,7 @@ export const PATCH = withErrorHandler(async (
   const validated = GBPReviewCreateSchema.partial().parse(body)
 
   // 3. Prepare response data
-  const responseData: Record<string, any> = {
-    ...validated,
-  }
+  const responseData: Record<string, any> = { ...validated }
 
   // If responding now, automatically set metadata
   if (body.response_text !== undefined) {
@@ -73,7 +71,7 @@ export const PATCH = withErrorHandler(async (
     throw updateError
   }
 
-  // 5. Log audit log
+  // 5. Log audit
   await logUpdate(user.id, 'gbp_reviews', id, oldReview, newReview)
 
   return formatResponse(newReview)
@@ -81,13 +79,14 @@ export const PATCH = withErrorHandler(async (
 
 export const DELETE = withErrorHandler(async (
   req: Request,
-  context: { params: Record<string, string> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const authContext = await requireRole(['admin'])
   const supabase = await createClient()
-  const { id } = context.params as { id: string }
+  const params = await context.params
+  const { id } = params as { id: string }
 
-  // 1. Fetch old record for audit logging
+  // 1. Fetch old record
   const { data: oldReview, error: fetchError } = await supabase
     .from('gbp_reviews')
     .select('*')

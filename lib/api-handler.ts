@@ -6,9 +6,12 @@ import type { APIResponse, PaginatedResponse, PaginationMeta } from '@/lib/types
 // TYPES
 // ============================================================
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type RouteContext = { params: any }
+
 type RouteHandler = (
   req: Request,
-  context: { params: Record<string, string> },
+  context: RouteContext,
 ) => Promise<Response>
 
 // ============================================================
@@ -30,7 +33,7 @@ type RouteHandler = (
  * ```
  */
 export function withErrorHandler(handler: RouteHandler): RouteHandler {
-  return async (req: Request, context: { params: Record<string, string> }) => {
+  return async (req: Request, context: RouteContext) => {
     try {
       return await handler(req, context)
     } catch (error) {

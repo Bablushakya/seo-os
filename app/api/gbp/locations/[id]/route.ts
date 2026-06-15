@@ -1,6 +1,5 @@
 export const dynamic = 'force-dynamic'
 
-import { NextRequest } from 'next/server'
 import { withErrorHandler, formatResponse, formatDeletedResponse } from '@/lib/api-handler'
 import { requireAuth, requireRole } from '@/lib/auth/rbac'
 import { createClient } from '@/lib/supabase/server'
@@ -10,25 +9,26 @@ import { AppError, ErrorCode } from '@/lib/errors'
 
 /**
  * GET /api/gbp/locations/[id]
- * 
- * Fetches details of a single GBP location.
- * 
+ *
+ * Fetches details of a single GBP location with computed stats.
+ *
  * PATCH /api/gbp/locations/[id]
- * 
+ *
  * Updates GBP location metadata.
- * 
+ *
  * DELETE /api/gbp/locations/[id]
- * 
+ *
  * Deletes a GBP location. Restricted to Admin.
  */
 
 export const GET = withErrorHandler(async (
   req: Request,
-  context: { params: Record<string, string> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   await requireAuth()
   const supabase = await createClient()
-  const { id } = context.params as { id: string }
+  const params = await context.params
+  const { id } = params as { id: string }
 
   const { data: location, error: locError } = await supabase
     .from('gbp_locations')
@@ -52,11 +52,11 @@ export const GET = withErrorHandler(async (
 
   const postsCount = postsRes.data?.length || 0
   const reviews = reviewsRes.data || []
-  
+
   const countWithRating = reviews.filter(r => r.rating !== null && r.rating !== undefined).length
   const totalRating = reviews.reduce((sum, r) => sum + (r.rating || 0), 0)
   const avgRating = countWithRating > 0 ? Math.round((totalRating / countWithRating) * 10) / 10 : 0
-  
+
   const unrespondedCount = reviews.filter(r => !r.is_responded).length
 
   return formatResponse({
@@ -69,11 +69,12 @@ export const GET = withErrorHandler(async (
 
 export const PATCH = withErrorHandler(async (
   req: Request,
-  context: { params: Record<string, string> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const { user } = await requireAuth()
   const supabase = await createClient()
-  const { id } = context.params as { id: string }
+  const params = await context.params
+  const { id } = params as { id: string }
 
   // 1. Fetch old record for audit logging
   const { data: oldLocation, error: fetchError } = await supabase
@@ -102,7 +103,7 @@ export const PATCH = withErrorHandler(async (
     throw updateError
   }
 
-  // 4. Log audit log
+  // 4. Log audit
   await logUpdate(user.id, 'gbp_locations', id, oldLocation, newLocation)
 
   return formatResponse(newLocation)
@@ -110,11 +111,12 @@ export const PATCH = withErrorHandler(async (
 
 export const DELETE = withErrorHandler(async (
   req: Request,
-  context: { params: Record<string, string> }
+  context: { params: Promise<Record<string, string>> }
 ) => {
   const authContext = await requireRole(['admin'])
   const supabase = await createClient()
-  const { id } = context.params as { id: string }
+  const params = await context.params
+  const { id } = params as { id: string }
 
   // 1. Fetch old record for audit logging
   const { data: oldLocation, error: fetchError } = await supabase
@@ -127,7 +129,7 @@ export const DELETE = withErrorHandler(async (
     throw new AppError(ErrorCode.NOT_FOUND, 'Location not found', 404)
   }
 
-  // 2. Delete location (will cascade to posts, reviews, and metrics automatically via DB FK)
+  // 2. Delete location (cascades to posts, reviews, metrics)
   const { error: deleteError } = await supabase
     .from('gbp_locations')
     .delete()
@@ -137,7 +139,7 @@ export const DELETE = withErrorHandler(async (
     throw deleteError
   }
 
-  // 3. Log audit event
+  // 3. Log audit
   await logDelete(authContext.user.id, 'gbp_locations', id, oldLocation)
 
   return formatDeletedResponse()

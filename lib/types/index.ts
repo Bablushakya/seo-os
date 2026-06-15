@@ -691,3 +691,57 @@ export interface AIReportSummaryRequest {
  * Replace with the actual generated type from `supabase gen types typescript` once the schema is live.
  */
 export type Database = any
+
+// ============================================================
+// TEAM INFORMATION SHARING TYPES
+// ============================================================
+
+export type NoteColor = 'yellow' | 'blue' | 'green' | 'pink' | 'purple' | 'orange'
+
+/**
+ * Team post (Information sharing feed)
+ * Table: public.team_posts
+ */
+export interface TeamPost {
+  id: string
+  content: string
+  created_by: string | null
+  target_user_ids: string[] | null  // null = everyone, array = specific users
+  created_at: string
+  updated_at: string
+  // Joined fields
+  author?: Pick<User, 'id' | 'full_name' | 'avatar_url'>
+  attachments?: TeamPostAttachment[]
+}
+
+/**
+ * File/Image attachment for team posts
+ * Table: public.team_post_attachments
+ */
+export interface TeamPostAttachment {
+  id: string
+  post_id: string
+  file_name: string
+  file_url: string               // Supabase storage public URL
+  file_type: string              // MIME type e.g. 'application/pdf', 'image/jpeg'
+  file_size: number              // bytes
+  caption: string | null
+  created_by: string | null
+  created_at: string
+}
+
+/**
+ * Sticky note on team notes board
+ * Table: public.team_notes
+ */
+export interface TeamNote {
+  id: string
+  content: string
+  color: NoteColor
+  is_pinned: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  // Joined fields
+  author?: Pick<User, 'id' | 'full_name' | 'avatar_url'>
+}

@@ -154,10 +154,64 @@ export const GuestPostCreateSchema = z.object({
   publish_date: DateSchema,
   doc_link: OptionalURLSchema,
   notes: NotesSchema,
-  linked_prospect: UUIDSchema.nullable().optional(),
+  linked_prospect: z
+    .string()
+    .uuid('Must be a valid UUID')
+    .nullable()
+    .optional()
+    .or(z.literal(''))
+    .transform(val => (!val || val === '' ? null : val)),
 })
+  .transform(data => ({
+    ...data,
+    // Coerce empty strings to null for optional URL/text fields
+    target_url: data.target_url || null,
+    link_url: data.link_url || null,
+    doc_link: data.doc_link || null,
+    author: data.author || null,
+    topic: data.topic || null,
+    target_keyword: data.target_keyword || null,
+    anchor_text: data.anchor_text || null,
+    notes: data.notes || null,
+    publish_date: data.publish_date || null,
+  }))
 
-export const GuestPostUpdateSchema = GuestPostCreateSchema.partial()
+// Separate update schema (avoids .partial() on ZodEffects which can cause issues)
+export const GuestPostUpdateSchema = z.object({
+  title: z.string().min(2).max(500).optional(),
+  target_site: z.string().min(2).max(255).optional(),
+  target_url: OptionalURLSchema,
+  target_da: DomainAuthoritySchema.optional(),
+  author: OptionalText,
+  status: GuestPostStatusSchema.optional(),
+  topic: OptionalText,
+  word_count: z.number({ coerce: true }).int().min(0).max(100000).nullable().optional(),
+  target_keyword: OptionalText,
+  anchor_text: OptionalText,
+  link_url: OptionalURLSchema,
+  publish_date: DateSchema,
+  doc_link: OptionalURLSchema,
+  notes: NotesSchema,
+  linked_prospect: z
+    .string()
+    .uuid()
+    .nullable()
+    .optional()
+    .or(z.literal(''))
+    .transform(val => (!val || val === '' ? null : val)),
+})
+  .transform(data => ({
+    ...data,
+    target_url: data.target_url || null,
+    link_url: data.link_url || null,
+    doc_link: data.doc_link || null,
+    author: data.author || null,
+    topic: data.topic || null,
+    target_keyword: data.target_keyword || null,
+    anchor_text: data.anchor_text || null,
+    notes: data.notes || null,
+    publish_date: data.publish_date || null,
+  }))
 
 export type GuestPostCreateInput = z.infer<typeof GuestPostCreateSchema>
 
@@ -385,3 +439,41 @@ export const CitationCSVRowSchema = z.object({
 })
 
 export type CitationCSVRow = z.infer<typeof CitationCSVRowSchema>
+
+// ============================================================
+// TEAM POST SCHEMAS (Information Sharing Section)
+// ============================================================
+
+export const TeamPostCreateSchema = z.object({
+  content: z
+    .string()
+    .min(1, 'Content is required')
+    .max(5000, 'Content cannot exceed 5000 characters'),
+  target_user_ids: z
+    .array(z.string().uuid())
+    .nullable()
+    .optional(), // null = visible to everyone
+  has_attachment: z.boolean().optional().default(false),
+})
+
+export type TeamPostCreateInput = z.infer<typeof TeamPostCreateSchema>
+
+// ============================================================
+// TEAM NOTE SCHEMAS (Sticky Notes Board)
+// ============================================================
+
+export const TeamNoteCreateSchema = z.object({
+  content: z
+    .string()
+    .min(1, 'Note content is required')
+    .max(2000, 'Note cannot exceed 2000 characters'),
+  color: z
+    .enum(['yellow', 'blue', 'green', 'pink', 'purple', 'orange'])
+    .default('yellow'),
+  is_pinned: z.boolean().optional().default(false),
+})
+
+export const TeamNoteUpdateSchema = TeamNoteCreateSchema.partial()
+
+export type TeamNoteCreateInput = z.infer<typeof TeamNoteCreateSchema>
+export type TeamNoteUpdateInput = z.infer<typeof TeamNoteUpdateSchema>
